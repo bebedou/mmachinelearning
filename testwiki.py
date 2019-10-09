@@ -131,17 +131,57 @@ def read_db_from_csv(filename):
 	f_d = f_d.drop(f_d[f_d["Ko wins"] > 80].index)
 	return f_d
 def select_training_data (fd):
+
 	#Select a sample of 20 fighters with known styles
-	#Select Adesanya, Mcgregor, Khabib, Kattar, Maia, Manhoef, Makhachev, Mcdonald, Anthony Johnson, Demetrious Johnson, 
-	# Mark Hunt, Ishii, Holloway, Dan Henderson, Benson Henderson, Uriah Hall, Royce Gracie, Tony Ferguson, Paul Felder
-	training_data = fd.loc[fd["Fighter name"].isin(["Israel Adesanya","Conor McGregor",  "Royce Gracie", "Khabib Nurmagomedov", "Calvin Kattar", "Demian Maia", 
+	training_data_names = ["Israel Adesanya","Conor McGregor",  "Royce Gracie", "Khabib Nurmagomedov", "Calvin Kattar", "Demian Maia", 
 	"Melvin Manhoef", "Islam Makhachev", "Rory MacDonald (fighter)", "Anthony Johnson (fighter)", "Demetrious Johnson", "Mark Hunt", "Satoshi Ishii", "Max Holloway", "Dan Henderson",
-	"Benson Henderson", "Uriah Hall", "Royce Gracie", "Tony Ferguson", "Paul Felder"])]
+	"Benson Henderson", "Uriah Hall", "Royce Gracie", "Tony Ferguson", "Paul Felder",  "Gunnar Nelson (fighter)", "Rousimar Palhares", "Diego Sanchez" ]
+	
+	training_data_striker = fd.loc[fd["Fighter name"].isin(["Israel Adesanya","Conor McGregor",  "Calvin Kattar",
+	"Melvin Manhoef",  "Anthony Johnson (fighter)",  "Mark Hunt",  "Max Holloway", "Uriah Hall", "Paul Felder"])]
+	training_data_mmartist = fd.loc[fd["Fighter name"].isin([ "Rory MacDonald (fighter)",  "Demetrious Johnson", "Tony Ferguson", "Diego Sanchez"])]
+	training_data_grappler = fd.loc[fd["Fighter name"].isin([ "Royce Gracie",  "Demian Maia", "Gunnar Nelson (fighter)", "Rousimar Palhares", "Satoshi Ishii"])]
+	training_data_wrestler = fd.loc[fd["Fighter name"].isin([ "Khabib Nurmagomedov", "Islam Makhachev","Dan Henderson","Benson Henderson"])]
+	training_data_mmartist["fighter_type"] = 0
+	training_data_striker["fighter_type"] = 1
+	training_data_wrestler["fighter_type"] = 2
+	training_data_grappler["fighter_type"] = 3
+	training_data = pd.concat([pd.concat([training_data_mmartist, training_data_striker]), pd.concat([training_data_wrestler, training_data_grappler])])
+	training_data = training_data.reindex(np.random.permutation(training_data.index))
 	return training_data
 def select_test_data (fd):
-	pass
+
+	test_data_names = [
+	"Thiago Santos (fighter)", "Wanderlei Silva", "Khalil Rountree Jr.",
+	"Anthony Smith (mixed martial artist)", "Ovince Saint Preux", "Marlon Vera (fighter)"
+	, "Cláudio Silva", "Kazushi Sakuraba", "Paul Sass", "Chael Sonnen", "Cain Velasquez", "Phil Davis (fighter)"]
+	
+	test_data_striker = fd.loc[fd["Fighter name"].isin(["Thiago Santos (fighter)", "Wanderlei Silva", "Khalil Rountree Jr."])]
+	test_data_mmartist = fd.loc[fd["Fighter name"].isin(["Anthony Smith (mixed martial artist)", "Ovince Saint Preux", "Marlon Vera (fighter)" ])]
+	test_data_grappler = fd.loc[fd["Fighter name"].isin(["Cláudio Silva", "Kazushi Sakuraba", "Paul Sass" ])]
+	test_data_wrestler = fd.loc[fd["Fighter name"].isin(["Chael Sonnen", "Cain Velasquez", "Phil Davis (fighter)"  ])]
+	test_data_mmartist["fighter_type"] = 0
+	test_data_striker["fighter_type"] = 1
+	test_data_wrestler["fighter_type"] = 2
+	test_data_grappler["fighter_type"] = 3
+	test_data = pd.concat([pd.concat([test_data_mmartist, test_data_striker]), pd.concat([test_data_wrestler, test_data_grappler])])
+	test_data = test_data.reindex(np.random.permutation(test_data.index))
+	return test_data
 def select_validation_data (fd):
-	pass
+
+	validation_data_names = [  ]
+	
+	validation_data_striker = fd.loc[fd["Fighter name"].isin(["José Aldo", "Thomas Almeida", "Edson Barboza" ])]
+	validation_data_mmartist = fd.loc[fd["Fighter name"].isin(["Eddie Alvarez", "Joseph Benavidez", "Donald Cerrone" ])]
+	validation_data_grappler = fd.loc[fd["Fighter name"].isin(["David Branch (fighter)", "Gilbert Burns (fighter)", "Antônio Carlos Júnior"  ])]
+	validation_data_wrestler = fd.loc[fd["Fighter name"].isin(["Corey Anderson (fighter)", "Curtis Blaydes", "Derek Brunson" ])]
+	validation_data_mmartist["fighter_type"] = 0
+	validation_data_striker["fighter_type"] = 1
+	validation_data_wrestler["fighter_type"] = 2
+	validation_data_grappler["fighter_type"] = 3
+	validation_data = pd.concat([pd.concat([validation_data_mmartist, validation_data_striker]), pd.concat([validation_data_wrestler, validation_data_grappler])])
+	validation_data = validation_data.reindex(np.random.permutation(validation_data.index))
+	return validation_data
 	
 def main() :
 	filename = "fighters_db_2.csv"
@@ -155,4 +195,5 @@ def main() :
 	print (training_data)
 	validation_data = select_validation_data(f_d)
 	test_data = select_test_data(f_d)
+	print (test_data)
 main()
