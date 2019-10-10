@@ -5,6 +5,14 @@ import csv
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+import seaborn as sns
+from sklearn import metrics
+import tensorflow as tf
+from tensorflow.python.data import Dataset
+from tensorflow import keras
+import glob
+import math
+import os
 
 def num(s) :
 	s = s[:-1]
@@ -156,7 +164,8 @@ def select_test_data (fd):
 	"Anthony Smith (mixed martial artist)", "Ovince Saint Preux", "Marlon Vera (fighter)"
 	, "Cláudio Silva", "Kazushi Sakuraba", "Paul Sass", "Chael Sonnen", "Cain Velasquez", "Phil Davis (fighter)"]
 	
-	test_data_striker = fd.loc[fd["Fighter name"].isin(["Thiago Santos (fighter)", "Wanderlei Silva", "Khalil Rountree Jr."])]
+	test_data_striker = fd.loc[fd["Fighter name"].isin(["Thiago Santos (fighter)", "Wanderlei Silva", "Khalil Rountree Jr."
+	])]
 	test_data_mmartist = fd.loc[fd["Fighter name"].isin(["Anthony Smith (mixed martial artist)", "Ovince Saint Preux", "Marlon Vera (fighter)" ])]
 	test_data_grappler = fd.loc[fd["Fighter name"].isin(["Cláudio Silva", "Kazushi Sakuraba", "Paul Sass" ])]
 	test_data_wrestler = fd.loc[fd["Fighter name"].isin(["Chael Sonnen", "Cain Velasquez", "Phil Davis (fighter)"  ])]
@@ -169,12 +178,13 @@ def select_test_data (fd):
 	return test_data
 def select_validation_data (fd):
 
-	validation_data_names = [  ]
+	validation_data_names = [ "José Aldo", "Thomas Almeida", "Edson Barboza", "Bryan Barberena", "Vitor Belfort", "Michael Bisping", "Eddie Alvarez", "Joseph Benavidez", "Donald Cerrone", "David Branch (fighter)", 
+	"Gilbert Burns (fighter)", "Antônio Carlos Júnior", "Josh Barnett", "Tony Bonello", "Phil De Fries", "Corey Anderson (fighter)", "Curtis Blaydes", "Derek Brunson" , "Ryan Bader", "Darrion Caldwell", "Henry Cejudo" , "Randy Couture", "Colby Covington" ]
 	
-	validation_data_striker = fd.loc[fd["Fighter name"].isin(["José Aldo", "Thomas Almeida", "Edson Barboza" ])]
+	validation_data_striker = fd.loc[fd["Fighter name"].isin(["José Aldo", "Thomas Almeida", "Edson Barboza", "Bryan Barberena", "Vitor Belfort", "Michael Bisping", "T.J. Dillashaw" ])]
 	validation_data_mmartist = fd.loc[fd["Fighter name"].isin(["Eddie Alvarez", "Joseph Benavidez", "Donald Cerrone" ])]
-	validation_data_grappler = fd.loc[fd["Fighter name"].isin(["David Branch (fighter)", "Gilbert Burns (fighter)", "Antônio Carlos Júnior"  ])]
-	validation_data_wrestler = fd.loc[fd["Fighter name"].isin(["Corey Anderson (fighter)", "Curtis Blaydes", "Derek Brunson" ])]
+	validation_data_grappler = fd.loc[fd["Fighter name"].isin(["David Branch (fighter)", "Gilbert Burns (fighter)", "Antônio Carlos Júnior", "Josh Barnett", "Tony Bonello", "Phil De Fries", "Nate Diaz",  ])]
+	validation_data_wrestler = fd.loc[fd["Fighter name"].isin(["Corey Anderson (fighter)", "Curtis Blaydes", "Derek Brunson" , "Ryan Bader", "Darrion Caldwell", "Henry Cejudo" , "Randy Couture", "Colby Covington"])]
 	validation_data_mmartist["fighter_type"] = 0
 	validation_data_striker["fighter_type"] = 1
 	validation_data_wrestler["fighter_type"] = 2
@@ -182,6 +192,30 @@ def select_validation_data (fd):
 	validation_data = pd.concat([pd.concat([validation_data_mmartist, validation_data_striker]), pd.concat([validation_data_wrestler, validation_data_grappler])])
 	validation_data = validation_data.reindex(np.random.permutation(validation_data.index))
 	return validation_data
+		
+
+
+def get_compiled_model():
+	model = tf.keras.Sequential([
+	tf.keras.layers.Dense(6, activation='relu'),
+	tf.keras.layers.Dense(8, activation='relu'),
+	tf.keras.layers.Dense(4, activation='softmax')
+	])
+
+	model.compile(optimizer='adam',
+				loss='binary_crossentropy',
+				metrics=['accuracy'])
+	return model
+def classifier_keras (train_dataset, train_labels, test_dataset, test_labels):
+	class_names = ["MMArtist","Striker", "Wrestler", " Grappler"]
+	model = get_compiled_model()
+	model.fit(train_dataset, train_labels, epochs=30)
+	#test_loss, test_acc = model.evaluate(test_dataset,  test_labels, verbose=2)
+	#print('\nTest accuracy:', test_acc)
+	predictions = model.predict(test_dataset)
+	for i in range(0,12) :
+		print (predictions[i])
+		print("Predicted {} and was supposed to predict {} ".format(class_names[np.argmax(predictions[i])], class_names[test_labels[i]]))
 	
 def main() :
 	filename = "fighters_db_2.csv"
@@ -190,10 +224,27 @@ def main() :
 	f_d = read_db_from_csv(filename)
 	#0 = MMArtist, 1 = Striker, 2 = Wrestler, 3 = Grappler
 	f_d["fighter_type"] = 0
-	print (f_d.dtypes)
-	training_data = select_training_data(f_d)
-	print (training_data)
+	#print (f_d.dtypes)
+	training_data = select_training_data(f_d)	
+	training_targets = training_data["fighter_type"]
+	training_features = training_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	#print (training_data)
+	
 	validation_data = select_validation_data(f_d)
+	validation_targets = validation_data["fighter_type"]
+	validation_features = validation_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	#training_targets = pd.concat([training_targets, validation_targets])
+	#training_targets = pd.concat([training_targets, training_targets])
+	
+	#training_features = pd.concat([training_features, validation_features])
+	#training_features = pd.concat([training_features, training_features])
+	
 	test_data = select_test_data(f_d)
 	print (test_data)
+	test_features = test_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	test_targets = test_data["fighter_type"]
+	#print (test_data)
+
+	classifier_keras(training_features.to_numpy(), training_targets.to_numpy(), test_features.to_numpy(), test_targets.to_numpy())
+
 main()
