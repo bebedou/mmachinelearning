@@ -197,19 +197,20 @@ def select_validation_data (fd):
 
 def get_compiled_model():
 	model = tf.keras.Sequential([
-	tf.keras.layers.Dense(6, activation='relu'),
-	tf.keras.layers.Dense(8, activation='relu'),
+	tf.keras.layers.Dense(3, activation='sigmoid'),
+	tf.keras.layers.Dense(8, activation='sigmoid'),
+	tf.keras.layers.Dense(8, activation='sigmoid'),
 	tf.keras.layers.Dense(4, activation='softmax')
 	])
-
-	model.compile(optimizer='adam',
-				loss='binary_crossentropy',
+	opt = keras.optimizers.Adam(lr=0.01)
+	model.compile(optimizer=opt,
+				loss='sparse_categorical_crossentropy',
 				metrics=['accuracy'])
 	return model
 def classifier_keras (train_dataset, train_labels, test_dataset, test_labels):
 	class_names = ["MMArtist","Striker", "Wrestler", " Grappler"]
 	model = get_compiled_model()
-	model.fit(train_dataset, train_labels, epochs=30)
+	model.fit(train_dataset, train_labels, epochs=500, batch_size = 5, shuffle = True)
 	#test_loss, test_acc = model.evaluate(test_dataset,  test_labels, verbose=2)
 	#print('\nTest accuracy:', test_acc)
 	predictions = model.predict(test_dataset)
@@ -227,24 +228,27 @@ def main() :
 	#print (f_d.dtypes)
 	training_data = select_training_data(f_d)	
 	training_targets = training_data["fighter_type"]
-	training_features = training_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	#training_features = training_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	training_features = training_data[["Ko wins",  "Submission wins", "Decision wins"]]
 	#print (training_data)
 	
 	validation_data = select_validation_data(f_d)
 	validation_targets = validation_data["fighter_type"]
-	validation_features = validation_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
-	#training_targets = pd.concat([training_targets, validation_targets])
+	#validation_features = validation_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	validation_features = validation_data[["Ko wins", "Submission wins", "Decision wins"]]
+	training_targets = pd.concat([training_targets, validation_targets])
 	#training_targets = pd.concat([training_targets, training_targets])
 	
-	#training_features = pd.concat([training_features, validation_features])
+	training_features = pd.concat([training_features, validation_features])
 	#training_features = pd.concat([training_features, training_features])
 	
 	test_data = select_test_data(f_d)
 	print (test_data)
-	test_features = test_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	#test_features = test_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	test_features = test_data[["Ko wins", "Submission wins",  "Decision wins"]]
 	test_targets = test_data["fighter_type"]
 	#print (test_data)
 
+	#classifier_keras(training_features.to_numpy(), training_targets.to_numpy(), test_features.to_numpy(), test_targets.to_numpy(), validation_features.to_numpy(), validation_targets.to_numpy())
 	classifier_keras(training_features.to_numpy(), training_targets.to_numpy(), test_features.to_numpy(), test_targets.to_numpy())
-
 main()
