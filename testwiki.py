@@ -197,27 +197,44 @@ def select_validation_data (fd):
 
 def get_compiled_model():
 	model = tf.keras.Sequential([
-	tf.keras.layers.Dense(3, activation='sigmoid'),
+	tf.keras.layers.Dense(6, activation='sigmoid'),
 	tf.keras.layers.Dense(8, activation='sigmoid'),
 	tf.keras.layers.Dense(8, activation='sigmoid'),
 	tf.keras.layers.Dense(4, activation='softmax')
 	])
-	opt = keras.optimizers.Adam(lr=0.01)
+	opt = keras.optimizers.Adam(lr=0.009)
 	model.compile(optimizer=opt,
 				loss='sparse_categorical_crossentropy',
 				metrics=['accuracy'])
 	return model
-def classifier_keras (train_dataset, train_labels, test_dataset, test_labels):
+def classifier_keras (train_dataset, train_labels, test_dataset, test_labels, fighters_data):
+	res = []
 	class_names = ["MMArtist","Striker", "Wrestler", " Grappler"]
 	model = get_compiled_model()
-	model.fit(train_dataset, train_labels, epochs=500, batch_size = 5, shuffle = True)
+	model.fit(train_dataset, train_labels, epochs=150, batch_size = 5, shuffle = True)
 	#test_loss, test_acc = model.evaluate(test_dataset,  test_labels, verbose=2)
 	#print('\nTest accuracy:', test_acc)
-	predictions = model.predict(test_dataset)
-	for i in range(0,12) :
-		print (predictions[i])
-		print("Predicted {} and was supposed to predict {} ".format(class_names[np.argmax(predictions[i])], class_names[test_labels[i]]))
 	
+	predictions = model.predict(fighters_data)
+	for i in predictions :
+		res.append(np.argmax(i))
+	plt.hist(res)
+	plt.xticks(range(4), class_names, rotation = 45)
+	plt.show()
+	return res
+	
+def get_win_pct(f_d):
+	res = []
+	for index, row in f_d.iterrows():
+		try:
+			res.append((row["Ko wins"]+ row["Submission wins"] + row ["Decision wins"])/
+			(row["Ko losses"]+ row["Submission losses"] + row ["Decision losses"]+row["Ko wins"]+ row["Submission wins"] + row ["Decision wins"]))
+		except ValueError:
+			res.append(100)
+		except ZeroDivisionError :
+			res.append(100)
+		
+	return res
 def main() :
 	filename = "fighters_db_2.csv"
 	#content = read_urls_from_file(filename)
@@ -225,30 +242,38 @@ def main() :
 	f_d = read_db_from_csv(filename)
 	#0 = MMArtist, 1 = Striker, 2 = Wrestler, 3 = Grappler
 	f_d["fighter_type"] = 0
-	#print (f_d.dtypes)
 	training_data = select_training_data(f_d)	
 	training_targets = training_data["fighter_type"]
-	#training_features = training_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
-	training_features = training_data[["Ko wins",  "Submission wins", "Decision wins"]]
-	#print (training_data)
-	
+	training_features = training_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
 	validation_data = select_validation_data(f_d)
 	validation_targets = validation_data["fighter_type"]
-	#validation_features = validation_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
-	validation_features = validation_data[["Ko wins", "Submission wins", "Decision wins"]]
-	training_targets = pd.concat([training_targets, validation_targets])
-	#training_targets = pd.concat([training_targets, training_targets])
-	
+	validation_features = validation_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	#validation_features = validation_data[["Ko wins", "Submission wins", "Decision wins"]]
+	training_targets = pd.concat([training_targets, validation_targets])	
 	training_features = pd.concat([training_features, validation_features])
-	#training_features = pd.concat([training_features, training_features])
-	
 	test_data = select_test_data(f_d)
 	print (test_data)
-	#test_features = test_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
-	test_features = test_data[["Ko wins", "Submission wins",  "Decision wins"]]
+	test_features = test_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	#test_features = test_data[["Ko wins", "Submission wins",  "Decision wins"]]
 	test_targets = test_data["fighter_type"]
-	#print (test_data)
+	f_d = f_d.reindex(np.random.permutation(f_d.index))
+	fighters_data = f_d[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	training_targets = pd.concat([training_targets, test_targets])	
+	training_features = pd.concat([training_features, test_features])
+	f_classes = classifier_keras(training_features.to_numpy(), training_targets.to_numpy(), test_features.to_numpy(), test_targets.to_numpy(), fighters_data.to_numpy() )
+	wins_pct = get_win_pct(f_d)
+	f_d["fighter_type"] = f_classes
+	f_d["win pct"] = wins_pct
+	print(f_d.describe())
+	
+	#extract sub-dataframes for each class and calculate average win%
+	fd_striker = f_d.loc[f_d["fighter_type"].isin([1])]
+	print(fd_striker.describe())
+	fd_wrestler = f_d.loc[f_d["fighter_type"].isin([2])]
+	print(fd_wrestler.describe())
+	fd_grappler = f_d.loc[f_d["fighter_type"].isin([3])]
+	print(fd_grappler.describe())
+	fd_mma = f_d.loc[f_d["fighter_type"].isin([0])]
+	print(fd_mma.describe())
 
-	#classifier_keras(training_features.to_numpy(), training_targets.to_numpy(), test_features.to_numpy(), test_targets.to_numpy(), validation_features.to_numpy(), validation_targets.to_numpy())
-	classifier_keras(training_features.to_numpy(), training_targets.to_numpy(), test_features.to_numpy(), test_targets.to_numpy())
 main()
