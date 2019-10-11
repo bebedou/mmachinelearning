@@ -202,7 +202,7 @@ def get_compiled_model():
 	tf.keras.layers.Dense(8, activation='sigmoid'),
 	tf.keras.layers.Dense(4, activation='softmax')
 	])
-	opt = keras.optimizers.Adam(lr=0.009)
+	opt = keras.optimizers.Adam(lr=0.007)
 	model.compile(optimizer=opt,
 				loss='sparse_categorical_crossentropy',
 				metrics=['accuracy'])
@@ -237,6 +237,7 @@ def get_win_pct(f_d):
 	return res
 def main() :
 	filename = "fighters_db_2.csv"
+	class_names = ["MMArtist","Striker", "Wrestler", " Grappler"]
 	#content = read_urls_from_file(filename)
 	#write_db_to_csv(content)
 	f_d = read_db_from_csv(filename)
@@ -263,7 +264,7 @@ def main() :
 	f_classes = classifier_keras(training_features.to_numpy(), training_targets.to_numpy(), test_features.to_numpy(), test_targets.to_numpy(), fighters_data.to_numpy() )
 	wins_pct = get_win_pct(f_d)
 	f_d["fighter_type"] = f_classes
-	f_d["win pct"] = wins_pct
+	f_d["wins_pct"] = wins_pct
 	print(f_d.describe())
 	
 	#extract sub-dataframes for each class and calculate average win%
@@ -275,5 +276,8 @@ def main() :
 	print(fd_grappler.describe())
 	fd_mma = f_d.loc[f_d["fighter_type"].isin([0])]
 	print(fd_mma.describe())
+	win_pct_list = [fd_mma["wins_pct"].mean(), fd_striker["wins_pct"].mean(), fd_wrestler["wins_pct"].mean(), fd_grappler["wins_pct"].mean()]
+	print (win_pct_list)
+	#plt.xticks(range(4), class_names, rotation = 45)
 
 main()
