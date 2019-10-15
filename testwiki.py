@@ -13,6 +13,7 @@ from tensorflow import keras
 import glob
 import math
 import os
+from datetime import datetime
 
 def num(s) :
 	s = s[:-1]
@@ -235,6 +236,20 @@ def get_win_pct(f_d):
 			res.append(100)
 		
 	return res
+def write_results_to_files(df):
+	now = datetime.now()
+	dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
+	filename_csv = "Test_NN_MMA_Class_" + dt_string + ".csv"
+	filename_xlsx = "Test_NN_MMA_Class_" + dt_string + ".xlsx"
+	df.to_csv(filename_csv)
+	df.to_excel(filename_xlsx)
+	return True
+def format_classes(list, class_names):	
+	ret = []
+	for i in list:
+		ret.append(class_names[i])
+	return ret
+	
 def main() :
 	filename = "fighters_db_2.csv"
 	class_names = ["MMArtist","Striker", "Wrestler", " Grappler"]
@@ -262,22 +277,8 @@ def main() :
 	training_targets = pd.concat([training_targets, test_targets])	
 	training_features = pd.concat([training_features, test_features])
 	f_classes = classifier_keras(training_features.to_numpy(), training_targets.to_numpy(), test_features.to_numpy(), test_targets.to_numpy(), fighters_data.to_numpy() )
-	wins_pct = get_win_pct(f_d)
+	f_classes = format_classes (f_classes, class_names)
 	f_d["fighter_type"] = f_classes
-	f_d["wins_pct"] = wins_pct
-	print(f_d.describe())
-	
-	#extract sub-dataframes for each class and calculate average win%
-	fd_striker = f_d.loc[f_d["fighter_type"].isin([1])]
-	print(fd_striker.describe())
-	fd_wrestler = f_d.loc[f_d["fighter_type"].isin([2])]
-	print(fd_wrestler.describe())
-	fd_grappler = f_d.loc[f_d["fighter_type"].isin([3])]
-	print(fd_grappler.describe())
-	fd_mma = f_d.loc[f_d["fighter_type"].isin([0])]
-	print(fd_mma.describe())
-	win_pct_list = [fd_mma["wins_pct"].mean(), fd_striker["wins_pct"].mean(), fd_wrestler["wins_pct"].mean(), fd_grappler["wins_pct"].mean()]
-	print (win_pct_list)
-	#plt.xticks(range(4), class_names, rotation = 45)
+	write_results_to_files(f_d)
 
 main()
