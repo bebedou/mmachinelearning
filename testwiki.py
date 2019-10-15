@@ -75,6 +75,7 @@ def get_fighter_record(fighter_url):
 	for link in tb.find_all('td') :
 			content.append(link.get_text('b'))
 			#print (link.get_text('b'))
+	# If values are not available from the recap table on Wikipedia page, replace them by 0
 	try:
 		ret.append(num(content[content.index('By knockoutb\n')+1]))
 	except ValueError:
@@ -115,9 +116,11 @@ def construct_url_file (filename) :
 	print(page.status_code)
 	soup = BeautifulSoup(page.content, 'html.parser')
 
+	# Find all links containing Wiki in it
 	for link in soup.findAll('a', attrs={'href': re.compile("^/wiki")}):
 		res = link.get('href')
 		fighters_url_list.append(res)
+	# Filter URLs to keep only the useful ones i.e Ones containing Fighter record (excluding also Counrty link, organisation link etc)
 	filtered = filter_urls(fighters_url_list)
 	print (len(filtered))
 	for i in filtered :
@@ -136,7 +139,7 @@ def write_db_to_csv (list) :
 				db_writer.writerow(tmp)
 def read_db_from_csv(filename):
 	f_d = pd.read_csv(filename, sep=",", encoding = "ISO-8859-1")
-	#filter Travis Fulton and data aberrantes
+	#filter Travis Fulton and wrong data
 	f_d = f_d.drop(f_d[f_d["Ko wins"] > 80].index)
 	return f_d
 def select_training_data (fd):
@@ -217,11 +220,17 @@ def classifier_keras (train_dataset, train_labels, test_dataset, test_labels, fi
 	#print('\nTest accuracy:', test_acc)
 	
 	predictions = model.predict(fighters_data)
+	
+	# Chose most likely class predicted using argmax
 	for i in predictions :
 		res.append(np.argmax(i))
+	
+	# Plot predicted values in a histogram
 	plt.hist(res)
 	plt.xticks(range(4), class_names, rotation = 45)
 	plt.show()
+	
+	# Return predicted classes
 	return res
 	
 def get_win_pct(f_d):
@@ -251,32 +260,58 @@ def format_classes(list, class_names):
 	return ret
 	
 def main() :
+
+	"""
+		Main function calling different functions to perform the data extraction/exploration
+		Once data has been extracted or read from CSV File, classifier_keras function performs the learning on training_features
+		After the learning has been performed, the function predict the class of each fighter computing the proper columns of the dataframe
+		
+	"""
 	filename = "fighters_db_2.csv"
+	
+	#0 = MMArtist, 1 = Striker, 2 = Wrestler, 3 = Grappler
 	class_names = ["MMArtist","Striker", "Wrestler", " Grappler"]
+	
+	"""
+		The next two lines can scrape URLs from recap page on Wkipedia to create a file listing all of them
+		Then it reads the URLs from the file and extract Fighter names + records and store them as an array in a .csv file
+	"""
+	# construct_url_file(filename)
 	#content = read_urls_from_file(filename)
 	#write_db_to_csv(content)
+	
+	# Read Fighters data from csv and construct dataframe f_d
 	f_d = read_db_from_csv(filename)
-	#0 = MMArtist, 1 = Striker, 2 = Wrestler, 3 = Grappler
+	# Set all classes to 0 just for default value purpose
 	f_d["fighter_type"] = 0
+
+	# Hand pick training dataset with no particular policy, just well known fighters and their classes
+	# Training dataset is merged with test and validation because it was not big enough to provide proper training, 
+	# They were separated
 	training_data = select_training_data(f_d)	
 	training_targets = training_data["fighter_type"]
 	training_features = training_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	
 	validation_data = select_validation_data(f_d)
 	validation_targets = validation_data["fighter_type"]
 	validation_features = validation_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
-	#validation_features = validation_data[["Ko wins", "Submission wins", "Decision wins"]]
+	
 	training_targets = pd.concat([training_targets, validation_targets])	
 	training_features = pd.concat([training_features, validation_features])
 	test_data = select_test_data(f_d)
-	print (test_data)
+
 	test_features = test_data[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
-	#test_features = test_data[["Ko wins", "Submission wins",  "Decision wins"]]
 	test_targets = test_data["fighter_type"]
 	f_d = f_d.reindex(np.random.permutation(f_d.index))
 	fighters_data = f_d[["Ko wins", "Ko losses", "Submission wins", "Submission losses", "Decision wins", "Decision losses"]]
+	
+	# Expand training dataset 
 	training_targets = pd.concat([training_targets, test_targets])	
 	training_features = pd.concat([training_features, test_features])
+	
+	# Predict
 	f_classes = classifier_keras(training_features.to_numpy(), training_targets.to_numpy(), test_features.to_numpy(), test_targets.to_numpy(), fighters_data.to_numpy() )
+	# Replace predicted class value by proper name
 	f_classes = format_classes (f_classes, class_names)
 	f_d["fighter_type"] = f_classes
 	write_results_to_files(f_d)
